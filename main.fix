@@ -34,6 +34,8 @@ c_particle_color = (1.0, 1.0, 1.0);
 type FunctionGraph = box struct {
     // 関数
     function : Vec2 -> F64,
+    // ∇(-log(f)) = -∇f/f
+    der_u : Vec2 -> Vec2,
     // グラフの高さ。この高さの値が青色として表示される。
     height : F64,
     // 座標平面上での長さ1に対応するピクセル数
@@ -42,14 +44,19 @@ type FunctionGraph = box struct {
 
 // 正規分布の関数
 gaussian : FunctionGraph;
-gaussian = FunctionGraph {
-    function : |p| (
-        let d2 = p.dot(p);
+gaussian = (
+    let f = |x| (
+        let d2 = x.dot(x);
         exp(-d2 / 2.0)
-    ),
-    height : 1.0,
-    pixels_unit : 250.0,
-};
+    );
+    let der_u = |x| x;
+    FunctionGraph {
+        function : f,
+        der_u : der_u,
+        height : 1.0,
+        pixels_unit : 250.0,
+    }
+);
 
 // 関数の値（高さ）を色に変換する
 height_to_rgb : F64 -> F64 -> (F64, F64, F64);
@@ -185,7 +192,26 @@ namespace Scene {
         // 関数のグラフを計算し、キャッシュする
         let scene = *calculate_function_graph(scene);
 
+        let dt = time - scene.@prev_time;
+
+        // 粒子の位置を運動方程式に従って更新する
+        let scene = scene.mod_particles(|ps|
+            range(0, ps.get_size).fold(ps, |i, ps|
+                ps.mod(i, update_particle(scene.@function.@der_u, dt))
+            )
+        );
+
         pure $ scene
+    );
+
+    // 粒子の位置を運動方程式に従って更新する
+    update_particle : (Vec2 -> Vec2) -> F64 -> Particle -> Particle;
+    update_particle = |der_u, dt, p| (
+        // リープフロッグ法
+        let pos = p.@position + p.@velocity.scaled(dt);
+        let acc = -der_u(pos);
+        let vel = p.@velocity + acc.scaled(dt);
+        Particle { position : pos, velocity : vel }
     );
 
     // 関数のグラフを計算し、キャッシュする
