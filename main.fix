@@ -229,9 +229,10 @@ namespace Scene {
         let acc = -der_u(pos);
         let vel = p.@velocity + acc.scaled(dt);
 
-        // 速度をランダムに変化させる
-        // TODO: 本当はdtに応じて標準偏差を変えるべき
-        let vel = (*RandomState::gen_normal2).scaled(1.0);
+        // 一定確率で速度をランダムに置き換える
+        let t = *gen_F64;
+        let new_v = (*RandomState::gen_normal2).scaled(1.0);
+        let vel = if t < 1.0/60.0 { new_v } else vel;
 
         pure $ Particle { position : pos, velocity : vel }
     );
