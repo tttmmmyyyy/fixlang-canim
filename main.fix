@@ -54,7 +54,7 @@ gaussian = (
         function : f,
         der_u : der_u,
         height : 1.0,
-        pixels_unit : 250.0,
+        pixels_unit : 100.0,
     }
 );
 
@@ -149,6 +149,17 @@ namespace RandomState {
         put_state(rng);;
         pure $ x
     );
+
+    // 平均0, 分散2の2次元正規分布から乱数を生成する
+    gen_normal2 : RandomState Vec2;
+    gen_normal2 = (
+        // Box-Muller法
+        let u = *gen_F64;
+        let r = sqrt(-2.0 * log(u));
+        let v = *gen_F64;
+        let th = 2.0 * pi64 * v;
+        pure $ Vec2::make(r * cos(th), r * sin(th))
+    );
 }
 
 namespace Scene {
@@ -156,7 +167,7 @@ namespace Scene {
     initialize : FunctionGraph -> Time -> Scene;
     initialize = |fg, time| (
         let rng = Random::init_by_seed(time.to_U64);
-        let (rng, ps) = generate_particles(100, fg.@pixels_unit).run_state(rng);
+        let (rng, ps) = generate_particles(1000, fg.@pixels_unit).run_state(rng);
         let scene = Scene {
             time : time,
             prev_time : time,
@@ -166,6 +177,12 @@ namespace Scene {
             function_image : none(),
         };
         scene
+    );
+
+    run_random_state : (Scene -> RandomState Scene) -> Scene -> Scene;
+    run_random_state = |runner, scene| (
+        let (rng, scene) = runner(scene).run_state(scene.@rng);
+        scene.set_rng(rng)
     );
 
     // 画面内にパーティクルを指定された個数生成する
@@ -195,23 +212,28 @@ namespace Scene {
         let dt = time - scene.@prev_time;
 
         // 粒子の位置を運動方程式に従って更新する
-        let scene = scene.mod_particles(|ps|
-            range(0, ps.get_size).fold(ps, |i, ps|
-                ps.mod(i, update_particle(scene.@function.@der_u, dt))
+        let scene = scene.run_random_state(act_particles(|ps|
+            range(0, ps.get_size).fold_m(ps, |i, ps|
+                ps.act(i, update_particle(scene.@function.@der_u, dt))
             )
-        );
+        ));
 
         pure $ scene
     );
 
     // 粒子の位置を運動方程式に従って更新する
-    update_particle : (Vec2 -> Vec2) -> F64 -> Particle -> Particle;
+    update_particle : (Vec2 -> Vec2) -> F64 -> Particle -> RandomState Particle;
     update_particle = |der_u, dt, p| (
-        // リープフロッグ法
+        // リープフロッグ法で更新
         let pos = p.@position + p.@velocity.scaled(dt);
         let acc = -der_u(pos);
         let vel = p.@velocity + acc.scaled(dt);
-        Particle { position : pos, velocity : vel }
+
+        // 速度をランダムに変化させる
+        // TODO: 本当はdtに応じて標準偏差を変えるべき
+        let vel = (*RandomState::gen_normal2).scaled(1.0);
+
+        pure $ Particle { position : pos, velocity : vel }
     );
 
     // 関数のグラフを計算し、キャッシュする
