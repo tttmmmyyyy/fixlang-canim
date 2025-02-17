@@ -1,0 +1,309 @@
+module Main;
+
+import Cairo;
+import Cairo.ImageSurface;
+import Cairo.XlibSurface;
+import MiscAlgos.Functional;
+import MiscAlgos.Geometry;
+import MiscAlgos.Color hiding {height_to_rgb};
+import Math;
+import Random;
+import Time hiding {Time};
+import Minilib.Monad.State;
+
+// 各フレームの画像を保存するモードか？
+c_recording_mode : Bool;
+c_recording_mode = false;
+
+// FPS
+c_fps : F64;
+c_fps = 60.0;
+
+c_image_size : (I64, I64);
+c_image_size = (1920, 1080);
+
+// 粒子を表す円の半径
+c_particle_radius : F64;
+c_particle_radius = 3.0;
+
+// 粒子を表す円の色
+c_particle_color : (F64, F64, F64);
+c_particle_color = (1.0, 1.0, 1.0);
+
+// 2変数の関数（正の値をとる）およびそれを描画するための情報を保持する構造体
+type FunctionGraph = box struct {
+    // 関数
+    function : Vec2 -> F64,
+    // グラフの高さ。この高さの値が青色として表示される。
+    height : F64,
+    // 座標平面上での長さ1に対応するピクセル数
+    pixels_unit : F64,
+};
+
+// 正規分布の関数
+gaussian : FunctionGraph;
+gaussian = FunctionGraph {
+    function : |p| (
+        let d2 = p.dot(p);
+        exp(-d2 / 2.0)
+    ),
+    height : 1.0,
+    pixels_unit : 250.0,
+};
+
+// 関数の値（高さ）を色に変換する
+height_to_rgb : F64 -> F64 -> (F64, F64, F64);
+height_to_rgb = |height, height_max| (
+    // 青をHSVで表現
+    let blue = rgb_to_hsv((0.0, 0.0, 1.0));
+    // heightのheight_maxの割合に合わせて、青のvalueを変化させる
+    let h = height / height_max;
+    let blue = blue.set_2(h);
+    // HSVをRGBに変換
+    hsv_to_rgb(blue)
+);
+
+// 単位長さのピクセル数をもとに、平面の座標を画面の座標に変換する
+to_screen_coord : F64 -> Vec2 -> Vec2;
+to_screen_coord = |pixels_unit, p| (
+    p.scaled(pixels_unit) + Vec2::make_from_tuple(c_image_size.map01(to_F64)).scaled(1.0 / 2.0)
+);
+
+// 単位長さのピクセル数をもとに、画面の座標を平面の座標に変換する
+to_plane_coord : F64 -> Vec2 -> Vec2;
+to_plane_coord = |pixels_unit, p| (
+    (p - Vec2::make_from_tuple(c_image_size.map01(to_F64)).scaled(1.0 / 2.0)).scaled(1.0 / pixels_unit)
+);
+
+namespace FunctionGraph {
+    // 関数のグラフの画像を作成する。
+    // 
+    // 出力は画像をRGBAバイト配列で表したもの。
+    create_image : (I64, I64) -> FunctionGraph -> Array U8;
+    create_image = |(width, height), graph| (
+        let image = Array::fill(width * height * 4, 0_U8);
+        let image = range(0, height).fold(image, |y, image|
+            range(0, width).fold(image, |x, image|
+                // 画像の座標を座標平面の座標に変換
+                let p = Vec2::make(x.to_F64, y.to_F64).to_plane_coord(graph.@pixels_unit);
+
+                // 関数の値を計算
+                let value = (graph.@function)(p);
+
+                // 関数の値を色に変換
+                let color = height_to_rgb(value, graph.@height); // 各成分の範囲は0.0から1.0
+
+                // 画像の座標に色を設定
+                let i = (y * width + x) * 4;
+                let image = image.set(i + 0, (color.@2 * 255.0).to_U8); // B
+                let image = image.set(i + 1, (color.@1 * 255.0).to_U8); // G 
+                let image = image.set(i + 2, (color.@0 * 255.0).to_U8); // R
+                let image = image.set(i + 3, 255_U8); // A
+
+                image
+            )
+        );
+        image
+    );
+}
+
+// 粒子の状態
+type Particle = struct {
+    position : Vec2,
+    velocity : Vec2,
+};
+
+// 時刻（秒）
+type Time = F64;
+
+// シーンの状態
+type Scene = box struct {
+    // 時刻
+    time : Time,
+    // 前の時刻
+    prev_time : Time,
+    // 乱数生成器
+    rng : Random,
+    // 粒子の列
+    particles : Array Particle,
+    // 関数
+    function : FunctionGraph,
+    // レンダリング済みの関数のグラフ
+    function_image : Option Surface,
+};
+
+type RandomState a = State Random a;
+
+namespace RandomState {
+    gen_F64 : RandomState F64;
+    gen_F64 = (
+        let rng = *get_state;
+        let (rng, x) = rng.generate_F64;
+        put_state(rng);;
+        pure $ x
+    );
+}
+
+namespace Scene {
+    // シーンを初期化する
+    initialize : FunctionGraph -> Time -> Scene;
+    initialize = |fg, time| (
+        let rng = Random::init_by_seed(time.to_U64);
+        let (rng, ps) = generate_particles(100, fg.@pixels_unit).run_state(rng);
+        let scene = Scene {
+            time : time,
+            prev_time : time,
+            rng : rng,
+            particles : ps,
+            function : fg,
+            function_image : none(),
+        };
+        scene
+    );
+
+    // 画面内にパーティクルを指定された個数生成する
+    generate_particles : I64 -> F64 -> RandomState (Array Particle);
+    generate_particles = |n, pixels_unit| (
+        range(0, n).fold_m([], |_, ps|
+            let pos_on_screen = Vec2::make(*RandomState::gen_F64, *RandomState::gen_F64).hadamard(Vec2::make_from_tuple(c_image_size.map01(to_F64)));
+            let pos = pos_on_screen.to_plane_coord(pixels_unit);
+            let vel = Vec2::make(0.0, 0.0);
+            let p = Particle { position : pos, velocity : vel };
+            pure $ ps.push_back(p)
+        )
+    );
+
+    // 時刻を更新する
+    update_time : Time -> Scene -> IO Scene;
+    update_time = |time, scene| (
+        // 時刻変数を更新
+        let scene = scene.set_prev_time(scene.@time).set_time(time);
+
+        // FPSを表示
+        scene.show_fps;;
+
+        // 関数のグラフを計算し、キャッシュする
+        let scene = *calculate_function_graph(scene);
+
+        pure $ scene
+    );
+
+    // 関数のグラフを計算し、キャッシュする
+    calculate_function_graph : Scene -> IO Scene;
+    calculate_function_graph = |scene| (
+        // キャッシュされているときは計算をスキップする
+        if scene.@function_image.is_some { pure $ scene };
+
+        let image = scene.@function.create_image(c_image_size);
+        let surface = ImageSurface::create(Format::argb, c_image_size.map01(to_I32));
+        surface.write_data(image);;
+        let scene = scene.set_function_image(Option::some(surface));
+        pure $ scene
+    );
+
+    // 描画する
+    render : Cairo -> Scene -> IO ();
+    render = |cairo, scene| (
+        // 関数のグラフを描画
+        scene.render_function_graph(cairo);;
+        // 粒子を描画
+        scene.render_particles(cairo);;
+        pure()
+    );
+
+    // 関数のグラフを描画する
+    render_function_graph : Cairo -> Scene -> IO ();
+    render_function_graph = |cairo, scene| (
+        // キャッシュされている関数のグラフを描画
+        let surface = scene.@function_image.as_some;
+        cairo.set_source_surface(surface, (0.0, 0.0));;
+        cairo.rectangle((0.0, 0.0), c_image_size.map01(to_F64));;
+        cairo.fill;;
+        pure()
+    );
+
+    // 粒子を描画する
+    render_particles : Cairo -> Scene -> IO ();
+    render_particles = |cairo, scene| (
+        cairo.set_source_rgb(c_particle_color);;
+        scene.@particles.to_iter.loop_iter_m((), |p, _|
+            let pos = p.@position;
+            let pos = pos.to_screen_coord(scene.@function.@pixels_unit).to_tuple;
+            cairo.new_sub_path;;
+            cairo.arc(pos, c_particle_radius, 0.0, 2.0 * pi64);;
+            continue_m $ ()
+        );;
+        cairo.fill
+    );
+
+    // fpsを標準出力に表示する
+    show_fps : Scene -> IO ();
+    show_fps = |scene| (
+        let time = scene.@time;
+        let prev_time = scene.@prev_time;
+        let fps = 1.0 / (time - prev_time);
+        println("FPS: " + fps.to_string)
+    );
+
+}
+
+main : IO ();
+main = (
+    // surface.write_to_png("hello.png");;
+
+    // ウィンドウとCairoコンテキストの作成
+    let window = *XlibSurface::create_simple_window(c_image_size);
+    let event_mask = EventMask::key_press;
+    window.select_input(event_mask);;
+    let surface = XlibSurface::create_back_surface(window);
+    let cairo = *Cairo::create(surface);
+
+    // 状態の生成
+    let time = (*Time::get_now_monotonic).to_F64;
+    let scene = Scene::initialize(gaussian, time);
+
+    // メインループ
+    loop_m(scene, |scene|
+        // 前回からの経過時間が1フレーム以内なら、状態を更新しない。
+        let time = (*Time::get_now_monotonic).to_F64;
+        if time - scene.@time < 1.0 / c_fps { continue_m $ scene };
+
+        // 時刻を更新
+        let scene = *scene.update_time(time);
+
+        // Xイベントによってシーンを更新する
+        // Qキーが押されたらnoneを返す。
+        let opt_state = *loop_m(scene, |scene| (
+            if *window.events_queued(QueuedMode::already) == 0 { break_m $ Option::some(scene) };
+            let event = *window.next_event;
+
+            let exit = *(
+                if !event.is_key_press { pure $ false };
+                let keycode = event.as_key_press.@keycode;
+                let keysym = *window.keycode_to_keysym(keycode);
+                let keysym_q = string_to_keysym("q");
+                pure $ keysym == keysym_q
+            );
+            if exit { break_m $ Option::none() };
+
+            continue_m $ scene
+        ));
+
+        // Qキーが押されていた場合は終了する。
+        if opt_state.is_none { break_m $ () };
+        let scene = opt_state.as_some;
+
+        // シーンを描画する
+        scene.render(cairo);;
+
+        window.flush;;
+        window.swap_buffers(XbeSwapAction::background);;
+
+        continue_m $ scene
+    );;
+
+    window.destroy_window;;
+
+    pure()
+
+);
