@@ -232,7 +232,7 @@ namespace Scene {
         // 一定確率で速度をランダムに置き換える
         let t = *gen_F64;
         let new_v = (*RandomState::gen_normal2).scaled(1.0);
-        let vel = if t < 1.0/60.0 { new_v } else vel;
+        let vel = if t < dt { new_v } else vel;
 
         pure $ Particle { position : pos, velocity : vel }
     );
