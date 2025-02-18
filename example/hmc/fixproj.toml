@@ -1,6 +1,6 @@
 [general]
 ## Project name. This is a required field.
-name = "canim"
+name = "hmc"
 
 ## Project version (in semver). This is a required field.
 version = "0.1.0"
@@ -9,7 +9,7 @@ version = "0.1.0"
 # authors = ["Alice", "Bob"]
 
 ## Project description.
-description = "Cairo Animation library"
+# description = "This is a Fix project."
 
 ## Project license.
 # license = "MIT"
@@ -17,7 +17,7 @@ description = "Cairo Animation library"
 [build]
 ## Fix source files to be compiled.
 ## Merged with files specified in the command line argument.
-files = ["canim.fix"]
+files = ["main.fix"]
 
 ## Object files to be linked.
 ## Merged with object files specified in the command line argument.
@@ -87,18 +87,18 @@ files = ["canim.fix"]
 # version = "1.2.0"
 # git = { url = "https://github.com/tttmmmyyyy/your-project.git" }
 
+[[dependencies]]
+name = "canim"
+version = "*"
+path = "../../"
+
 
 [[dependencies]]
-name = "cairo-fix"
-version = "0.1.8"
-git = { url = "https://github.com/tttmmmyyyy/fixlang-cairo.git" }
+name = "minilib-monad"
+version = "0.5.1"
+git = { url = "https://github.com/pt9999/fixlang-minilib-monad.git" }
 
 [[dependencies]]
-name = "misc-algos"
-version = "0.6.10"
-git = { url = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git" }
-
-[[dependencies]]
-name = "time"
-version = "1.0.1"
-git = { url = "https://github.com/tttmmmyyyy/fixlang-time.git" }
+name = "random"
+version = "1.1.1"
+git = { url = "https://github.com/tttmmmyyyy/fixlang-random.git" }

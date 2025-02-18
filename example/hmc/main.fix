@@ -1,26 +1,31 @@
 module Main;
 
+import Canim;
+
 import Cairo;
 import Cairo.ImageSurface;
-import Cairo.XlibSurface;
 import MiscAlgos.Functional;
 import MiscAlgos.Geometry;
 import MiscAlgos.Color hiding {height_to_rgb};
 import Math;
 import Random;
-import Time hiding {Time};
 import Minilib.Monad.State;
+import Time hiding {Time};
 
-// 各フレームの画像を保存するモードか？
-c_recording_mode : Bool;
-c_recording_mode = false;
+// 時刻（秒）を表す型エイリアス
+type Time = F64;
 
 // FPS
 c_fps : F64;
 c_fps = 60.0;
 
+// 画面サイズ
 c_image_size : (I64, I64);
 c_image_size = (1920, 1080);
+
+// 粒子の数
+c_num_particles : I64;
+c_num_particles = 1000;
 
 // 粒子を表す円の半径
 c_particle_radius : F64;
@@ -120,15 +125,8 @@ type Particle = struct {
     velocity : Vec2,
 };
 
-// 時刻（秒）
-type Time = F64;
-
 // シーンの状態
 type Scene = box struct {
-    // 時刻
-    time : Time,
-    // 前の時刻
-    prev_time : Time,
     // 乱数生成器
     rng : Random,
     // 粒子の列
@@ -136,7 +134,7 @@ type Scene = box struct {
     // 関数
     function : FunctionGraph,
     // レンダリング済みの関数のグラフ
-    function_image : Option Surface,
+    function_image : Surface,
 };
 
 type RandomState a = State Random a;
@@ -164,19 +162,27 @@ namespace RandomState {
 
 namespace Scene {
     // シーンを初期化する
-    initialize : FunctionGraph -> Time -> Scene;
-    initialize = |fg, time| (
+    initialize : FunctionGraph -> IO Scene;
+    initialize = |fg| (
+        // 乱数生成器の作成
+        let time = (*Time::get_now_monotonic).to_F64;
         let rng = Random::init_by_seed(time.to_U64);
-        let (rng, ps) = generate_particles(1000, fg.@pixels_unit).run_state(rng);
+
+        // 粒子の生成
+        let (rng, ps) = generate_particles(c_num_particles, fg.@pixels_unit).run_state(rng);
+
+        // 関数のグラフを計算する。
+        let image = fg.create_image(c_image_size);
+        let surface = ImageSurface::create(Format::argb, c_image_size.map01(to_I32));
+        surface.write_data(image);;
+
         let scene = Scene {
-            time : time,
-            prev_time : time,
             rng : rng,
             particles : ps,
             function : fg,
-            function_image : none(),
+            function_image : surface,
         };
-        scene
+        pure $ scene
     );
 
     run_random_state : (Scene -> RandomState Scene) -> Scene -> Scene;
@@ -198,20 +204,10 @@ namespace Scene {
     );
 
     // 時刻を更新する
-    update_time : Time -> Scene -> IO Scene;
-    update_time = |time, scene| (
-        // 時刻変数を更新
-        let scene = scene.set_prev_time(scene.@time).set_time(time);
+    update : TimeDelta -> Scene -> IO Scene;
+    update = |dt, scene| (
 
-        // FPSを表示
-        scene.show_fps;;
-
-        // 関数のグラフを計算し、キャッシュする
-        let scene = *calculate_function_graph(scene);
-
-        let dt = time - scene.@prev_time;
-
-        // 粒子の位置を運動方程式に従って更新する
+        // 粒子の位置を更新する
         let scene = scene.run_random_state(act_particles(|ps|
             range(0, ps.get_size).fold_m(ps, |i, ps|
                 ps.act(i, update_particle(scene.@function.@der_u, dt))
@@ -237,19 +233,6 @@ namespace Scene {
         pure $ Particle { position : pos, velocity : vel }
     );
 
-    // 関数のグラフを計算し、キャッシュする
-    calculate_function_graph : Scene -> IO Scene;
-    calculate_function_graph = |scene| (
-        // キャッシュされているときは計算をスキップする
-        if scene.@function_image.is_some { pure $ scene };
-
-        let image = scene.@function.create_image(c_image_size);
-        let surface = ImageSurface::create(Format::argb, c_image_size.map01(to_I32));
-        surface.write_data(image);;
-        let scene = scene.set_function_image(Option::some(surface));
-        pure $ scene
-    );
-
     // 描画する
     render : Cairo -> Scene -> IO ();
     render = |cairo, scene| (
@@ -264,7 +247,7 @@ namespace Scene {
     render_function_graph : Cairo -> Scene -> IO ();
     render_function_graph = |cairo, scene| (
         // キャッシュされている関数のグラフを描画
-        let surface = scene.@function_image.as_some;
+        let surface = scene.@function_image;
         cairo.set_source_surface(surface, (0.0, 0.0));;
         cairo.rectangle((0.0, 0.0), c_image_size.map01(to_F64));;
         cairo.fill;;
@@ -285,74 +268,17 @@ namespace Scene {
         cairo.fill
     );
 
-    // fpsを標準出力に表示する
-    show_fps : Scene -> IO ();
-    show_fps = |scene| (
-        let time = scene.@time;
-        let prev_time = scene.@prev_time;
-        let fps = 1.0 / (time - prev_time);
-        println("FPS: " + fps.to_string)
-    );
-
+    canim : Canim Scene;
+    canim = Canim {
+        window_size : Vec2::make_from_tuple(c_image_size.map01(to_F64)),
+        fps : c_fps,
+        initialize : initialize(gaussian),
+        update : update,
+        render : render,
+    };
 }
 
 main : IO ();
 main = (
-    // surface.write_to_png("hello.png");;
-
-    // ウィンドウとCairoコンテキストの作成
-    let window = *XlibSurface::create_simple_window(c_image_size);
-    let event_mask = EventMask::key_press;
-    window.select_input(event_mask);;
-    let surface = XlibSurface::create_back_surface(window);
-    let cairo = *Cairo::create(surface);
-
-    // 状態の生成
-    let time = (*Time::get_now_monotonic).to_F64;
-    let scene = Scene::initialize(gaussian, time);
-
-    // メインループ
-    loop_m(scene, |scene|
-        // 前回からの経過時間が1フレーム以内なら、状態を更新しない。
-        let time = (*Time::get_now_monotonic).to_F64;
-        if time - scene.@time < 1.0 / c_fps { continue_m $ scene };
-
-        // 時刻を更新
-        let scene = *scene.update_time(time);
-
-        // Xイベントによってシーンを更新する
-        // Qキーが押されたらnoneを返す。
-        let opt_state = *loop_m(scene, |scene| (
-            if *window.events_queued(QueuedMode::already) == 0 { break_m $ Option::some(scene) };
-            let event = *window.next_event;
-
-            let exit = *(
-                if !event.is_key_press { pure $ false };
-                let keycode = event.as_key_press.@keycode;
-                let keysym = *window.keycode_to_keysym(keycode);
-                let keysym_q = string_to_keysym("q");
-                pure $ keysym == keysym_q
-            );
-            if exit { break_m $ Option::none() };
-
-            continue_m $ scene
-        ));
-
-        // Qキーが押されていた場合は終了する。
-        if opt_state.is_none { break_m $ () };
-        let scene = opt_state.as_some;
-
-        // シーンを描画する
-        scene.render(cairo);;
-
-        window.flush;;
-        window.swap_buffers(XbeSwapAction::background);;
-
-        continue_m $ scene
-    );;
-
-    window.destroy_window;;
-
-    pure()
-
+    Scene::canim.run
 );

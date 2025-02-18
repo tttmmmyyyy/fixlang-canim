@@ -1,0 +1,89 @@
+module Canim;
+
+import Cairo;
+import Cairo.XlibSurface;
+import Time hiding {Time};
+import MiscAlgos.Geometry;
+import MiscAlgos.Functional;
+
+type TimeDelta = F64;
+
+// アニメーションを表す構造体
+// sは状態を表す型
+type Canim s = box struct {
+    // 画面のサイズ
+    window_size : Vec2,
+    // 期待するフレームレート
+    fps : F64,
+    // シーンの初期状態を生成する関数
+    initialize : IO s,
+    // 前回からの時間に基づき状態を更新する関数
+    update : TimeDelta -> s -> IO s,
+    // 状態を描画する関数
+    render : Cairo -> s -> IO (),
+};
+
+// アニメーションを実行する
+run : Canim s -> IO ();
+run = |canim| (
+    // ウィンドウとCairoコンテキストの作成
+    let window = *XlibSurface::create_simple_window(canim.@window_size.to_tuple.map01(to_I64));
+    let event_mask = EventMask::key_press;
+    window.select_input(event_mask);;
+    let surface = XlibSurface::create_back_surface(window);
+    let cairo = *Cairo::create(surface);
+
+    // 状態の生成
+    let state = *canim.@initialize;
+
+    let prev_time = (*Time::get_now_monotonic).to_F64;
+
+    // メインループ
+    loop_m((prev_time, state), |(prev_time, state)|
+        // 前回からの経過時間が1フレーム以内なら、状態を更新しない。
+        let time = (*Time::get_now_monotonic).to_F64;
+        let time_delta = time - prev_time;
+        if time_delta < 1.0 / canim.@fps { continue_m $ (prev_time, state) };
+
+        // FPSを表示する
+        println("FPS: " + (1.0 / time_delta).to_string);;
+
+        // Xイベントによってシーンを更新する処理（になる予定）
+        // 現状はQキーが押されたらnoneを返すだけ。
+        let opt_state = *loop_m(state, |state| (
+            if *window.events_queued(QueuedMode::already) == 0 { break_m $ Option::some(state) };
+            let event = *window.next_event;
+
+            let exit = *(
+                if !event.is_key_press { pure $ false };
+                let keycode = event.as_key_press.@keycode;
+                let keysym = *window.keycode_to_keysym(keycode);
+                let keysym_q = string_to_keysym("q");
+                pure $ keysym == keysym_q
+            );
+            if exit { break_m $ Option::none() };
+
+            continue_m $ state
+        ));
+
+        // Qキーが押されていた場合はメインループを終了する
+        if opt_state.is_none { break_m $ () };
+        let state = opt_state.as_some;
+
+        // 状態を更新
+        let state = *state.(canim.@update)(time_delta);
+
+        // 描画する
+        state.(canim.@render)(cairo);;
+
+        // 描画結果を画面に表示
+        window.flush;;
+        window.swap_buffers(XbeSwapAction::background);;
+
+        continue_m $ (time, state)
+    );;
+
+    window.destroy_window;;
+
+    pure()
+);

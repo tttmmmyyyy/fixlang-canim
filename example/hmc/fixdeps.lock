@@ -1,4 +1,9 @@
-proj_file_hash = "fdd28c71bccb49b1cebf6e5566bc75e3"
+proj_file_hash = "19095267f877444eeeec546d18819e40"
+
+[[dependencies]]
+name = "canim"
+version = "0.1.0"
+path = "../../"
 
 [[dependencies]]
 name = "misc-algos"
@@ -44,3 +49,39 @@ path = ".fixlang/deps/cairo-fix_0.1.9"
 [dependencies.git]
 repo = "https://github.com/tttmmmyyyy/fixlang-cairo.git"
 rev = "600a633cbf67cec3df425480bfe4d56230359476"
+
+[[dependencies]]
+name = "minilib-monad"
+version = "0.5.1"
+path = ".fixlang/deps/minilib-monad_0.5.1"
+
+[dependencies.git]
+repo = "https://github.com/pt9999/fixlang-minilib-monad.git"
+rev = "b1273c8551d8830787f4057b28853bbb7b64977d"
+
+[[dependencies]]
+name = "minilib-common"
+version = "0.5.2"
+path = ".fixlang/deps/minilib-common_0.5.2"
+
+[dependencies.git]
+repo = "https://github.com/pt9999/fixlang-minilib-common.git"
+rev = "083d1d3f7f1b835813fe76409effb42bb2be5e74"
+
+[[dependencies]]
+name = "character"
+version = "1.0.1"
+path = ".fixlang/deps/character_1.0.1"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-character.git"
+rev = "fd75a6634ec0c919f2d1703112d25da9a3c2346e"
+
+[[dependencies]]
+name = "random"
+version = "1.1.1"
+path = ".fixlang/deps/random_1.1.1"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-random.git"
+rev = "b4f83ee48564e714c0918513dd431f9135493dce"
