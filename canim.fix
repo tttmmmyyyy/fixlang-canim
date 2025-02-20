@@ -20,7 +20,7 @@ type Canim s = box struct {
     // 前回からの時間に基づき状態を更新する関数
     update : TimeDelta -> s -> IO s,
     // 状態を描画する関数
-    render : Cairo -> s -> IO (),
+    render : Cairo -> s -> IO s,
 };
 
 // アニメーションを実行する
@@ -74,7 +74,7 @@ run = |canim| (
         let state = *state.(canim.@update)(time_delta);
 
         // 描画する
-        state.(canim.@render)(cairo);;
+        let state = *state.(canim.@render)(cairo);
 
         // 描画結果を画面に表示
         window.flush;;

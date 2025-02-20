@@ -2,7 +2,7 @@ proj_file_hash = "19095267f877444eeeec546d18819e40"
 
 [[dependencies]]
 name = "canim"
-version = "0.1.0"
+version = "0.3.0"
 path = "../../"
 
 [[dependencies]]

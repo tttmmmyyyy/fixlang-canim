@@ -234,13 +234,14 @@ namespace Scene {
     );
 
     // 描画する
-    render : Cairo -> Scene -> IO ();
+    render : Cairo -> Scene -> IO Scene;
     render = |cairo, scene| (
         // 関数のグラフを描画
         scene.render_function_graph(cairo);;
         // 粒子を描画
         scene.render_particles(cairo);;
-        pure()
+
+        pure $ scene
     );
 
     // 関数のグラフを描画する
