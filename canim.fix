@@ -17,11 +17,11 @@ type Canim s = box struct {
     fps : F64,
     // シーンの初期状態を生成する関数
     initialize : IO s,
-    // 前回からの時間に基づき状態を更新する関数
-    update : TimeDelta -> s -> IO s,
-    // 状態を描画する関数
-    render : Cairo -> s -> IO s,
+    // 前回からの時間に基づき状態を更新し描画を行う
+    render : TimeDelta -> Cairo -> s -> IO s,
 };
+
+// TODO: renderの引数を変更する。一つの構造体に。ここに現在時刻やTImeDelta、イベントなどを入れる。
 
 // アニメーションを実行する
 run : Canim s -> IO ();
@@ -70,11 +70,8 @@ run = |canim| (
         if opt_state.is_none { break_m $ () };
         let state = opt_state.as_some;
 
-        // 状態を更新
-        let state = *state.(canim.@update)(time_delta);
-
         // 描画する
-        let state = *state.(canim.@render)(cairo);
+        let state = *state.(canim.@render)(time_delta, cairo);
 
         // 描画結果を画面に表示
         window.flush;;

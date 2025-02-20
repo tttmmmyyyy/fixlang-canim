@@ -203,9 +203,9 @@ namespace Scene {
         )
     );
 
-    // 時刻を更新する
-    update : TimeDelta -> Scene -> IO Scene;
-    update = |dt, scene| (
+    // 描画する
+    render : TimeDelta -> Cairo -> Scene -> IO Scene;
+    render = |dt, cairo, scene| (
 
         // 粒子の位置を更新する
         let scene = scene.run_random_state(act_particles(|ps|
@@ -213,6 +213,11 @@ namespace Scene {
                 ps.act(i, update_particle(scene.@function.@der_u, dt))
             )
         ));
+
+        // 関数のグラフを描画
+        scene.render_function_graph(cairo);;
+        // 粒子を描画
+        scene.render_particles(cairo);;
 
         pure $ scene
     );
@@ -231,17 +236,6 @@ namespace Scene {
         let vel = if t < dt { new_v } else vel;
 
         pure $ Particle { position : pos, velocity : vel }
-    );
-
-    // 描画する
-    render : Cairo -> Scene -> IO Scene;
-    render = |cairo, scene| (
-        // 関数のグラフを描画
-        scene.render_function_graph(cairo);;
-        // 粒子を描画
-        scene.render_particles(cairo);;
-
-        pure $ scene
     );
 
     // 関数のグラフを描画する
@@ -274,7 +268,6 @@ namespace Scene {
         window_size : Vec2::make_from_tuple(c_image_size.map01(to_F64)),
         fps : c_fps,
         initialize : initialize(gaussian),
-        update : update,
         render : render,
     };
 }
