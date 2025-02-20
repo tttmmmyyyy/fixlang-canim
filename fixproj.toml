@@ -90,7 +90,7 @@ files = ["canim.fix"]
 
 [[dependencies]]
 name = "cairo-fix"
-version = "0.1.8"
+version = "0.2.0"
 git = { url = "https://github.com/tttmmmyyyy/fixlang-cairo.git" }
 
 [[dependencies]]

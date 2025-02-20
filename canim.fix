@@ -30,7 +30,7 @@ run = |canim| (
     let window = *XlibSurface::create_simple_window(canim.@window_size.to_tuple.map01(to_I64));
     let event_mask = EventMask::key_press;
     window.select_input(event_mask);;
-    let surface = XlibSurface::create_back_surface(window);
+    let surface = *XlibSurface::create_back_surface(window);
     let cairo = *Cairo::create(surface);
 
     // 状態の生成

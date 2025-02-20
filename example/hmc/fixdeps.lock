@@ -6,31 +6,22 @@ version = "0.1.0"
 path = "../../"
 
 [[dependencies]]
-name = "misc-algos"
-version = "0.6.10"
-path = ".fixlang/deps/misc-algos_0.6.10"
+name = "cairo-fix"
+version = "0.2.0"
+path = ".fixlang/deps/cairo-fix_0.2.0"
 
 [dependencies.git]
-repo = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git"
-rev = "1b1a77c64380c3b93aef2a14a9d5d7a96741b5dd"
-
-[[dependencies]]
-name = "binary-heap"
-version = "0.1.1"
-path = ".fixlang/deps/binary-heap_0.1.1"
-
-[dependencies.git]
-repo = "https://github.com/tttmmmyyyy/fixlang-binary-heap.git"
-rev = "3b7972d5ec6ff814db5de4f6ade3c83dd9c8d4e7"
+repo = "https://github.com/tttmmmyyyy/fixlang-cairo.git"
+rev = "c9373da8ccf44e47b47124fa9def078e7c134252"
 
 [[dependencies]]
 name = "math"
-version = "1.1.1"
-path = ".fixlang/deps/math_1.1.1"
+version = "1.1.2"
+path = ".fixlang/deps/math_1.1.2"
 
 [dependencies.git]
 repo = "https://github.com/tttmmmyyyy/fixlang-math.git"
-rev = "b1a263f348aa36aa699ec0f947c66233439e81d1"
+rev = "bac9ade9118530115eda0a302ade1bb0d6bd928b"
 
 [[dependencies]]
 name = "time"
@@ -42,13 +33,22 @@ repo = "https://github.com/tttmmmyyyy/fixlang-time.git"
 rev = "53b35d9adc0de54ad87fe6b06c4baa6afa38a2b4"
 
 [[dependencies]]
-name = "cairo-fix"
-version = "0.1.9"
-path = ".fixlang/deps/cairo-fix_0.1.9"
+name = "misc-algos"
+version = "0.6.13"
+path = ".fixlang/deps/misc-algos_0.6.13"
 
 [dependencies.git]
-repo = "https://github.com/tttmmmyyyy/fixlang-cairo.git"
-rev = "600a633cbf67cec3df425480bfe4d56230359476"
+repo = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git"
+rev = "5036a4adda759404a2232ab51960538a61aefc2c"
+
+[[dependencies]]
+name = "binary-heap"
+version = "0.1.1"
+path = ".fixlang/deps/binary-heap_0.1.1"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-binary-heap.git"
+rev = "3b7972d5ec6ff814db5de4f6ade3c83dd9c8d4e7"
 
 [[dependencies]]
 name = "minilib-monad"

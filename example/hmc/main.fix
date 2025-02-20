@@ -173,7 +173,7 @@ namespace Scene {
 
         // 関数のグラフを計算する。
         let image = fg.create_image(c_image_size);
-        let surface = ImageSurface::create(Format::argb, c_image_size.map01(to_I32));
+        let surface = *ImageSurface::create(Format::argb, c_image_size.map01(to_I32));
         surface.write_data(image);;
 
         let scene = Scene {
