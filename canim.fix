@@ -8,8 +8,9 @@ import MiscAlgos.Functional;
 
 type TimeDelta = F64;
 
-// アニメーションを表す構造体
-// sは状態を表す型
+// A structure representing an animation
+// 
+// `s` is a type representing the state
 type Canim s = box struct {
     // 画面のサイズ
     window_size : Vec2,
