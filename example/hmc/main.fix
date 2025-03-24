@@ -125,7 +125,7 @@ type Particle = struct {
     velocity : Vec2,
 };
 
-// シーンの状態
+// アニメーションの状態
 type Scene = box struct {
     // 乱数生成器
     rng : Random,
@@ -161,7 +161,7 @@ namespace RandomState {
 }
 
 namespace Scene {
-    // シーンを初期化する
+    // 初期状態を作成する
     initialize : FunctionGraph -> IO Scene;
     initialize = |fg| (
         // 乱数生成器の作成
@@ -201,25 +201,6 @@ namespace Scene {
             let p = Particle { position : pos, velocity : vel };
             pure $ ps.push_back(p)
         )
-    );
-
-    // 描画する
-    render : TimeDelta -> Cairo -> Scene -> IO Scene;
-    render = |dt, cairo, scene| (
-
-        // 粒子の位置を更新する
-        let scene = scene.run_random_state(act_particles(|ps|
-            range(0, ps.get_size).fold_m(ps, |i, ps|
-                ps.act(i, update_particle(scene.@function.@der_u, dt))
-            )
-        ));
-
-        // 関数のグラフを描画
-        scene.render_function_graph(cairo);;
-        // 粒子を描画
-        scene.render_particles(cairo);;
-
-        pure $ scene
     );
 
     // 粒子の位置を運動方程式に従って更新する
@@ -263,16 +244,40 @@ namespace Scene {
         cairo.fill
     );
 
-    canim : Canim Scene;
-    canim = Canim {
-        window_size : Vec2::make_from_tuple(c_image_size.map01(to_F64)),
-        fps : c_fps,
-        initialize : initialize(gaussian),
-        render : render,
-    };
+    // 状態を更新する
+    update : Event -> Scene -> IO (Option Scene);
+    update = |event, scene| (
+        let dt = event.@time_delta;
+        let scene = scene.run_random_state(act_particles(|ps|
+            range(0, ps.get_size).fold_m(ps, |i, ps|
+                ps.act(i, update_particle(scene.@function.@der_u, dt))
+            )
+        ));
+        pure $ some $ scene
+    );
+
+    // 描画する
+    render : Cairo -> Scene -> IO ();
+    render = |cairo, scene| (
+        // 関数のグラフを描画
+        scene.render_function_graph(cairo);;
+        // 粒子を描画
+        scene.render_particles(cairo);;
+
+        pure $ ()
+    );
 }
 
 main : IO ();
 main = (
-    Scene::canim.run
+    let fg = Main::gaussian;
+    let scene = *Scene::initialize(fg);
+    let frame = from_state_machine(
+        render, scene, update
+    );
+    let config = AnimationConfig {
+        fps : c_fps,
+        window_size : c_image_size,
+    };
+    run_on_window(frame, config)
 );
