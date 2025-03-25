@@ -9,47 +9,57 @@ import MiscAlgos.Functional;
 type TimeDelta = F64;
 type Time = F64;
 
-// フレームの更新の「ある瞬間」を表すための構造体
+// 時間軸上の点を表す構造体
 type Tick = struct {
-    // 開始してからの時刻
+    // 時刻
     time : Time,
     // 前回のフレームからの経過時間
     time_delta : TimeDelta
 };
 
-// アニメーションのあるフレームを表す構造体
-type Frame = struct {
-    render : Cairo -> IO (),
-    update : Tick -> IO (Option Frame),
+// 時間とともに変化する値を表す構造体
+type Stream s = struct {
+    // 現在の値
+    value : s,
+    // 次の値を計算する関数
+    update : Tick -> IO (Stream s),
 };
 
-// 状態sの遷移関数によって定義されるアニメーション
-type StateAnimation s = struct {
-    // 初期状態
-    initial : s,
-    // 描画関数
-    render : Cairo -> s -> IO (),
-    // 状態遷移関数
-    update : Tick -> s -> IO (Option s),
-};
-
-namespace StateAnimation {
-    // フレームを作成する
-    to_frame : StateAnimation s -> Frame;
-    to_frame = |animation| (
-        Frame {
-            render : |cairo| (animation.@render)(cairo, animation.@initial),
-            update : |event| (
-                let StateAnimation { initial : initial, render : render, update : update } = animation;
-                let opt_state = *(animation.@update)(event, initial);
-                match opt_state {
-                    none() => pure $ none(),
-                    some(state) => pure $ some $ StateAnimation { initial : state, render : render, update : update }.to_frame
-                }
+impl Stream : Functor {
+    map = |f, stream| (
+        Stream {
+            value : f(stream.@value),
+            update : |tick| (
+                let next = *(stream.@update)(tick);
+                pure $ next.map(f)
             )
         }
     );
 }
+
+namespace Stream {
+    // 現在時刻を表すストリーム
+    time : Stream Time;
+    time = iterate(0.0, |tick, _| pure $ tick.@time);
+
+    // 状態遷移関数からストリームを作成する
+    iterate : s -> (Tick -> s -> IO s) -> Stream s;
+    iterate = |initial, update| (
+        Stream {
+            value : initial,
+            update : |tick| (
+                let state = *update(tick, initial);
+                pure $ iterate(state, update)
+            )
+        }
+    );
+}
+
+// 描画処理を表す型
+type Draw = Cairo -> IO ();
+
+// アニメーションを表す型
+type Animation = Stream Draw;
 
 // アニメーションの設定
 type Config = box struct {
@@ -60,9 +70,9 @@ type Config = box struct {
 };
 
 namespace Frame {
-    // ウィンドウを作成し、フレームを実行する
-    run : Config -> Frame -> IO ();
-    run = |config, frame| (
+    // ウィンドウを作成し、アニメーションを実行する
+    run : Config -> Animation -> IO ();
+    run = |config, ani| (
         // ウィンドウとCairoコンテキストの作成
         let window = *XlibSurface::create_simple_window(config.@window_size);
         let event_mask = EventMask::key_press;
@@ -72,11 +82,11 @@ namespace Frame {
 
         // メインループ
         let start_time = (*Time::get_now_monotonic).to_F64;
-        loop_m((start_time, frame), |(prev_time, frame)|
+        loop_m((start_time, ani), |(prev_time, ani)|
             // 前回からの経過時間が1フレーム以内なら、状態を更新しない。
             let time = (*Time::get_now_monotonic).to_F64;
             let time_delta = time - prev_time;
-            if time_delta < 1.0 / config.@fps { continue_m $ (prev_time, frame) };
+            if time_delta < 1.0 / config.@fps { continue_m $ (prev_time, ani) };
 
             // FPSを表示する
             println("FPS: " + (1.0 / time_delta).to_string);;
@@ -102,27 +112,23 @@ namespace Frame {
             // Qキーが押されていた場合はメインループを終了する
             if exit { break_m $ () };
 
-            // フレームを更新する
-            let tick = Tick { time : time - start_time, time_delta : time_delta };
-            let frame = *(frame.@update)(tick);
-
-            // アニメーションが終了していたらメインループを終了する
-            if frame.is_none { break_m $ () };
-            let frame = frame.as_some;
-
-            // フレームを描画する
+            // アニメーションを描画する
             // ユーザ空間の中心を画面の中心に移動する
             let org_matrix = *cairo.get_matrix;
             let window_center = config.@window_size.map01(|x| x.to_F64 * 0.5);
             cairo.translate(window_center);;
-            (frame.@render)(cairo);;
+            (ani.@value)(cairo);;
             cairo.set_matrix(org_matrix);;
 
             // 描画結果を画面に表示
             window.flush;;
             window.swap_buffers(XbeSwapAction::background);;
 
-            continue_m $ (time, frame)
+            // アニメーションを更新する
+            let tick = Tick { time : time - start_time, time_delta : time_delta };
+            let ani = *(ani.@update)(tick);
+
+            continue_m $ (time, ani)
         );;
 
         window.destroy_window;;

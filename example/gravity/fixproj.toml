@@ -1,9 +1,12 @@
 [general]
 ## Project name. This is a required field.
-name = "hmc"
+name = "gravity"
 
 ## Project version (in semver). This is a required field.
 version = "0.1.0"
+
+## Fix version requirement. Default is "*".
+fix_version = "1.1.0"
 
 ## Project authors.
 # authors = ["Alice", "Bob"]
@@ -87,6 +90,12 @@ files = ["main.fix"]
 # version = "1.2.0"
 # git = { url = "https://github.com/tttmmmyyyy/your-project.git" }
 
+
+[[dependencies]]
+name = "cairo-fix"
+version = "0.2.1"
+git = { url = "https://github.com/tttmmmyyyy/fixlang-cairo.git" }
+
 [[dependencies]]
 name = "canim"
 version = "*"
@@ -94,11 +103,11 @@ path = "../../"
 
 
 [[dependencies]]
-name = "minilib-monad"
-version = "0.5.1"
-git = { url = "https://github.com/pt9999/fixlang-minilib-monad.git" }
+name = "math"
+version = "1.1.2"
+git = { url = "https://github.com/tttmmmyyyy/fixlang-math.git" }
 
 [[dependencies]]
-name = "random"
-version = "1.1.1"
-git = { url = "https://github.com/tttmmmyyyy/fixlang-random.git" }
+name = "misc-algos"
+version = "0.6.16"
+git = { url = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git" }

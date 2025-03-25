@@ -1,5 +1,7 @@
 /*
 原点を中心とする円の上を移動する点のアニメーション
+
+時刻tから描画内容が計算できる単純な場合のサンプル
 */
 module Main;
 
@@ -20,48 +22,22 @@ c_image_size = (800, 600);
 c_radius : F64;
 c_radius = 100.0;
 
-// アニメーションの状態を表す構造体
-type AniState = struct {
-    // 粒子の位置
-    pos : Vec2,
-};
-
-namespace AniState {
-    // 初期状態を生成する
-    initial : AniState;
-    initial = AniState { pos : Vec2::make(c_radius, 0.0) };
-
-    // 状態を更新する
-    update : Tick -> AniState -> IO (Option AniState);
-    update = |tick, _| (
-        // 原点を中心とする円の上を3秒で一周する点の座標を計算
-        let time = tick.@time;
-        let v = Vec2::make(c_radius, 0.0);
-        let pos = v.rotated(time * 2.0 * pi64 / 3.0);
-        pure $ some $ AniState { pos : pos }
-    );
-
-    // 状態を描画する
-    render : Cairo -> AniState -> IO ();
-    render = |cairo, AniState {pos : pos}| (
-        // cairoコンテキストの原点は画面の中心に設定されている
-        cairo.set_source_rgb((1.0, 1.0, 1.0));;
-        cairo.arc(pos.to_tuple, 10.0, 0.0, 2.0 * pi64);;
-        cairo.fill;;
-        pure()
-    );
-}
-
 main : IO ();
 main = (
     let config = Canim::Config {
         fps : c_fps,
         window_size : c_image_size,
     };
-    let ani = StateAnimation {
-        initial : AniState::initial,
-        update : AniState::update,
-        render : AniState::render,
-    };
-    ani.to_frame.run(config)
+    let pos = Stream::time.map(|t|
+        let v = Vec2::make(c_radius, 0.0);
+        v.rotated(t * 2.0 * pi64 / 3.0)
+    );
+    let ani = pos.map(|pos, cairo|
+        // cairoコンテキストの原点は画面の中心に設定されている
+        cairo.set_source_rgb((1.0, 1.0, 1.0));;
+        cairo.arc(pos.to_tuple, 10.0, 0.0, 2.0 * pi64);;
+        cairo.fill;;
+        pure()
+    );
+    ani.run(config)
 );
