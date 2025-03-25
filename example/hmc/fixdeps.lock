@@ -2,26 +2,8 @@ proj_file_hash = "19095267f877444eeeec546d18819e40"
 
 [[dependencies]]
 name = "canim"
-version = "0.3.0"
+version = "0.4.0"
 path = "../../"
-
-[[dependencies]]
-name = "cairo-fix"
-version = "0.2.0"
-path = ".fixlang/deps/cairo-fix_0.2.0"
-
-[dependencies.git]
-repo = "https://github.com/tttmmmyyyy/fixlang-cairo.git"
-rev = "c9373da8ccf44e47b47124fa9def078e7c134252"
-
-[[dependencies]]
-name = "math"
-version = "1.1.2"
-path = ".fixlang/deps/math_1.1.2"
-
-[dependencies.git]
-repo = "https://github.com/tttmmmyyyy/fixlang-math.git"
-rev = "bac9ade9118530115eda0a302ade1bb0d6bd928b"
 
 [[dependencies]]
 name = "time"
@@ -33,13 +15,31 @@ repo = "https://github.com/tttmmmyyyy/fixlang-time.git"
 rev = "53b35d9adc0de54ad87fe6b06c4baa6afa38a2b4"
 
 [[dependencies]]
+name = "cairo-fix"
+version = "0.2.1"
+path = ".fixlang/deps/cairo-fix_0.2.1"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-cairo.git"
+rev = "a43d27c1015b30f2b25e0ba70212f2bf0f49c2b3"
+
+[[dependencies]]
+name = "math"
+version = "1.1.2"
+path = ".fixlang/deps/math_1.1.2"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-math.git"
+rev = "bac9ade9118530115eda0a302ade1bb0d6bd928b"
+
+[[dependencies]]
 name = "misc-algos"
-version = "0.6.13"
-path = ".fixlang/deps/misc-algos_0.6.13"
+version = "0.6.16"
+path = ".fixlang/deps/misc-algos_0.6.16"
 
 [dependencies.git]
 repo = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git"
-rev = "5036a4adda759404a2232ab51960538a61aefc2c"
+rev = "d3a89a089dbf5232e7bb735889468914c40726fa"
 
 [[dependencies]]
 name = "binary-heap"
@@ -61,12 +61,12 @@ rev = "b1273c8551d8830787f4057b28853bbb7b64977d"
 
 [[dependencies]]
 name = "minilib-common"
-version = "0.5.2"
-path = ".fixlang/deps/minilib-common_0.5.2"
+version = "0.6.0"
+path = ".fixlang/deps/minilib-common_0.6.0"
 
 [dependencies.git]
 repo = "https://github.com/pt9999/fixlang-minilib-common.git"
-rev = "083d1d3f7f1b835813fe76409effb42bb2be5e74"
+rev = "95079f8eabbb13ef8ce472a319ca22d242ffb481"
 
 [[dependencies]]
 name = "character"

@@ -21,7 +21,7 @@ c_fps = 60.0;
 
 // 画面サイズ
 c_image_size : (I64, I64);
-c_image_size = (1920, 1080);
+c_image_size = (800, 600);
 
 // 粒子の数
 c_num_particles : I64;
@@ -245,9 +245,9 @@ namespace Scene {
     );
 
     // 状態を更新する
-    update : Event -> Scene -> IO (Option Scene);
-    update = |event, scene| (
-        let dt = event.@time_delta;
+    update : Tick -> Scene -> IO (Option Scene);
+    update = |tick, scene| (
+        let dt = tick.@time_delta;
         let scene = scene.run_random_state(act_particles(|ps|
             range(0, ps.get_size).fold_m(ps, |i, ps|
                 ps.act(i, update_particle(scene.@function.@der_u, dt))
@@ -272,12 +272,14 @@ main : IO ();
 main = (
     let fg = Main::gaussian;
     let scene = *Scene::initialize(fg);
-    let frame = from_state_machine(
-        render, scene, update
-    );
+    let ani = StateAnimation {
+        initial : scene,
+        update : Scene::update,
+        render : Scene::render,
+    };
     let config = AnimationConfig {
         fps : c_fps,
         window_size : c_image_size,
     };
-    run_on_window(frame, config)
+    ani.to_frame.run(config)
 );

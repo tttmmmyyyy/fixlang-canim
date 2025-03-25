@@ -9,40 +9,49 @@ import MiscAlgos.Functional;
 type TimeDelta = F64;
 type Time = F64;
 
-type Event = struct {
+// フレームの更新の「ある瞬間」を表すための構造体
+type Tick = struct {
+    // 開始してからの時刻
     time : Time,
-    // 前回のフレームからの経過時間。最初のフレームの場合は0。
+    // 前回のフレームからの経過時間
     time_delta : TimeDelta
 };
 
 // アニメーションのあるフレームを表す構造体
 type Frame = struct {
     render : Cairo -> IO (),
-    update : Canim::Event -> IO (Option Frame),
+    update : Tick -> IO (Option Frame),
 };
 
-namespace Frame {
-    // 状態遷移関数からフレームを作成する
-    // 
-    // - 第1引数：状態を描画する関数
-    // - 第2引数：初期状態
-    // - 第3引数：状態遷移関数
-    from_state_machine : (Cairo -> s -> IO ()) -> s -> (Canim::Event -> s -> IO (Option s)) -> Frame;
-    from_state_machine = |render, state, machine| (
-        Frame { 
-            render : |cairo| state.render(cairo),
+// 状態sの遷移関数によって定義されるアニメーション
+type StateAnimation s = struct {
+    // 初期状態
+    initial : s,
+    // 描画関数
+    render : Cairo -> s -> IO (),
+    // 状態遷移関数
+    update : Tick -> s -> IO (Option s),
+};
+
+namespace StateAnimation {
+    // フレームを作成する
+    to_frame : StateAnimation s -> Frame;
+    to_frame = |animation| (
+        Frame {
+            render : |cairo| (animation.@render)(cairo, animation.@initial),
             update : |event| (
-                let opt_state = *machine(event, state);
+                let StateAnimation { initial : initial, render : render, update : update } = animation;
+                let opt_state = *(animation.@update)(event, initial);
                 match opt_state {
                     none() => pure $ none(),
-                    some(state) => pure $ some $ from_state_machine(render, state, machine)
+                    some(state) => pure $ some $ StateAnimation { initial : state, render : render, update : update }.to_frame
                 }
             )
         }
     );
 }
 
-// アニメーションの情報
+// アニメーションの設定
 type AnimationConfig = box struct {
     // 画面のサイズ
     window_size : (I64, I64),
@@ -50,67 +59,69 @@ type AnimationConfig = box struct {
     fps : F64,
 };
 
-// ウィンドウを作成し、アニメーションを実行する
-run_on_window : Frame ->  AnimationConfig -> IO ();
-run_on_window = |frame, config| (
-    // ウィンドウとCairoコンテキストの作成
-    let window = *XlibSurface::create_simple_window(config.@window_size);
-    let event_mask = EventMask::key_press;
-    window.select_input(event_mask);;
-    let surface = *XlibSurface::create_back_surface(window);
-    let cairo = *Cairo::create(surface);
+namespace Frame {
+    // ウィンドウを作成し、フレームを実行する
+    run : AnimationConfig -> Frame -> IO ();
+    run = |config, frame| (
+        // ウィンドウとCairoコンテキストの作成
+        let window = *XlibSurface::create_simple_window(config.@window_size);
+        let event_mask = EventMask::key_press;
+        window.select_input(event_mask);;
+        let surface = *XlibSurface::create_back_surface(window);
+        let cairo = *Cairo::create(surface);
 
-    // メインループ
-    let prev_time = (*Time::get_now_monotonic).to_F64;
-    loop_m((prev_time, frame), |(prev_time, frame)|
-        // 前回からの経過時間が1フレーム以内なら、状態を更新しない。
-        let time = (*Time::get_now_monotonic).to_F64;
-        let time_delta = time - prev_time;
-        if time_delta < 1.0 / config.@fps { continue_m $ (prev_time, frame) };
+        // メインループ
+        let start_time = (*Time::get_now_monotonic).to_F64;
+        loop_m((start_time, frame), |(prev_time, frame)|
+            // 前回からの経過時間が1フレーム以内なら、状態を更新しない。
+            let time = (*Time::get_now_monotonic).to_F64;
+            let time_delta = time - prev_time;
+            if time_delta < 1.0 / config.@fps { continue_m $ (prev_time, frame) };
 
-        // FPSを表示する
-        println("FPS: " + (1.0 / time_delta).to_string);;
+            // FPSを表示する
+            println("FPS: " + (1.0 / time_delta).to_string);;
 
-        // Xイベントによってシーンを更新する処理
-        // 現状：Qキーが押されたら終了
-        let exit = *loop_m((), |_| (
-            if *window.events_queued(QueuedMode::already) == 0 { break_m $ false };
-            let event = *window.next_event;
+            // Xイベントによって状態を更新する処理
+            // 現状：Qキーが押されたら終了
+            let exit = *loop_m((), |_| (
+                if *window.events_queued(QueuedMode::already) == 0 { break_m $ false };
+                let event = *window.next_event;
 
-            let exit = *(
-                if !event.is_key_press { pure $ false };
-                let keycode = event.as_key_press.@keycode;
-                let keysym = *window.keycode_to_keysym(keycode);
-                let keysym_q = string_to_keysym("q");
-                pure $ keysym == keysym_q
-            );
-            if exit { break_m $ true };
+                let exit = *(
+                    if !event.is_key_press { pure $ false };
+                    let keycode = event.as_key_press.@keycode;
+                    let keysym = *window.keycode_to_keysym(keycode);
+                    let keysym_q = string_to_keysym("q");
+                    pure $ keysym == keysym_q
+                );
+                if exit { break_m $ true };
 
-            continue_m $ ()
-        ));
+                continue_m $ ()
+            ));
 
-        // Qキーが押されていた場合はメインループを終了する
-        if exit { break_m $ () };
+            // Qキーが押されていた場合はメインループを終了する
+            if exit { break_m $ () };
 
-        // フレームを更新する
-        let event = Canim::Event { time : time, time_delta : time_delta };
-        let frame = *(frame.@update)(event);
+            // フレームを更新する
+            let tick = Tick { time : time - start_time, time_delta : time_delta };
+            let frame = *(frame.@update)(tick);
 
-        // アニメーションが終了していたらメインループを終了する
-        if frame.is_none { break_m $ () };
-        let frame = frame.as_some;
+            // アニメーションが終了していたらメインループを終了する
+            if frame.is_none { break_m $ () };
+            let frame = frame.as_some;
 
-        // フレームを描画する
-        (frame.@render)(cairo);;
+            // フレームを描画する
+            (frame.@render)(cairo);;
 
-        // 描画結果を画面に表示
-        window.flush;;
-        window.swap_buffers(XbeSwapAction::background);;
+            // 描画結果を画面に表示
+            window.flush;;
+            window.swap_buffers(XbeSwapAction::background);;
 
-        continue_m $ (time, frame)
-    );;
+            continue_m $ (time, frame)
+        );;
 
-    window.destroy_window;;
+        window.destroy_window;;
 
-    pure()
-);
+        pure()
+    );
+}
