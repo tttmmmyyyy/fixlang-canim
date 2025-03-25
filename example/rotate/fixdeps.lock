@@ -1,0 +1,51 @@
+proj_file_hash = "ee4c5c6bf42974b3bd1d346ce780621a"
+
+[[dependencies]]
+name = "cairo-fix"
+version = "0.2.1"
+path = ".fixlang/deps/cairo-fix_0.2.1"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-cairo.git"
+rev = "a43d27c1015b30f2b25e0ba70212f2bf0f49c2b3"
+
+[[dependencies]]
+name = "math"
+version = "1.1.2"
+path = ".fixlang/deps/math_1.1.2"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-math.git"
+rev = "bac9ade9118530115eda0a302ade1bb0d6bd928b"
+
+[[dependencies]]
+name = "canim"
+version = "0.4.0"
+path = "../../"
+
+[[dependencies]]
+name = "time"
+version = "1.0.1"
+path = ".fixlang/deps/time_1.0.1"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-time.git"
+rev = "53b35d9adc0de54ad87fe6b06c4baa6afa38a2b4"
+
+[[dependencies]]
+name = "misc-algos"
+version = "0.6.16"
+path = ".fixlang/deps/misc-algos_0.6.16"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git"
+rev = "d3a89a089dbf5232e7bb735889468914c40726fa"
+
+[[dependencies]]
+name = "binary-heap"
+version = "0.1.1"
+path = ".fixlang/deps/binary-heap_0.1.1"
+
+[dependencies.git]
+repo = "https://github.com/tttmmmyyyy/fixlang-binary-heap.git"
+rev = "3b7972d5ec6ff814db5de4f6ade3c83dd9c8d4e7"

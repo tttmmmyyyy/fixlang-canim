@@ -52,7 +52,7 @@ namespace StateAnimation {
 }
 
 // アニメーションの設定
-type AnimationConfig = box struct {
+type Config = box struct {
     // 画面のサイズ
     window_size : (I64, I64),
     // 期待するフレームレート
@@ -61,7 +61,7 @@ type AnimationConfig = box struct {
 
 namespace Frame {
     // ウィンドウを作成し、フレームを実行する
-    run : AnimationConfig -> Frame -> IO ();
+    run : Config -> Frame -> IO ();
     run = |config, frame| (
         // ウィンドウとCairoコンテキストの作成
         let window = *XlibSurface::create_simple_window(config.@window_size);
@@ -111,7 +111,12 @@ namespace Frame {
             let frame = frame.as_some;
 
             // フレームを描画する
+            // ユーザ空間の中心を画面の中心に移動する
+            let org_matrix = *cairo.get_matrix;
+            let window_center = config.@window_size.map01(|x| x.to_F64 * 0.5);
+            cairo.translate(window_center);;
             (frame.@render)(cairo);;
+            cairo.set_matrix(org_matrix);;
 
             // 描画結果を画面に表示
             window.flush;;
