@@ -6,6 +6,8 @@
 module Main;
 
 import Canim;
+import Canim.Machine;
+
 import Cairo;
 import Math;
 import MiscAlgos.Geometry;
@@ -28,7 +30,7 @@ main = (
         fps : c_fps,
         window_size : c_image_size,
     };
-    let pos = Stream::time.map(|t|
+    let pos = Canim::clock.map(|t|
         let v = Vec2::make(c_radius, 0.0);
         v.rotated(t * 2.0 * pi64 / 3.0)
     );

@@ -1,0 +1,9 @@
+module Test;
+
+import Canim.Machine;
+
+test : IO ();
+test = (
+    Machine::test;;
+    pure()
+);
