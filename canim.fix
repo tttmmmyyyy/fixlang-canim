@@ -32,8 +32,11 @@ namespace Draw {
     // 描画位置を平行移動する
     translate : Vec2 -> Draw -> Draw;
     translate = |vec, draw, cairo| (
+        let org_matrix = *cairo.get_matrix;
         cairo.translate(vec.to_tuple);;
-        draw(cairo)
+        draw(cairo);;
+        cairo.set_matrix(org_matrix);;
+        pure()
     );
 }
 
@@ -68,8 +71,7 @@ namespace Animation {
         };
 
         // バッファに描画を行う
-        let draw = draw.translate(rect.@pos).restore_transform;
-        draw(cairo);;
+        (draw.translate(rect.@pos))(cairo);;
 
         pure $ (some $ (surface, cairo, draw_buf), draw_buf)
     );
@@ -132,8 +134,7 @@ namespace Frame {
             // フレームを描画する
             // 画面の中心を描画命令の原点にする
             let window_center = Vec2::make_from_tuple $ config.@window_size.map01(|x| x.to_F64 * 0.5);
-            let draw = draw.translate(window_center).restore_transform;
-            draw(cairo);;
+            (draw.translate(window_center))(cairo);;
 
             // 描画結果を画面に表示
             window.flush;;
