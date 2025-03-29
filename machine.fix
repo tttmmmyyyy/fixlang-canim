@@ -1,9 +1,9 @@
 // State machine library
 // 
-//
+// 
 module Funim.Machine;
 
-// A state machine that takes input of type i and returns output of type o
+// A state machine that takes input of type i, changes its internal state, and outputs a value of type o
 type Machine i o = struct {
     _run : i -> IO (Machine i o, o),
 };
@@ -20,7 +20,7 @@ impl Machine i : Functor {
 }
 
 namespace Machine {
-    // Advance the state machine by one step
+    // Advance the machine by one step
     run : i -> Machine i o -> IO (Machine i o, o);
     run = |i, machine| (
         let (machine, o) = *(machine.@_run)(i);
@@ -49,13 +49,13 @@ namespace Machine {
         }
     );
 
-    // Create a state machine that outputs the input as is
+    // Create a machine that outputs the input as is.
     identity : Machine i i;
     identity = from_transition((), |i, _| ((), i));
 
-    // Create a state machine that calculates the cumulative sum of inputs
+    // Create a machine that calculates the cumulative sum of inputs.
     // 
-    // The first output is 0, and subsequent outputs are the cumulative sum of inputs up to that point
+    // The first output is 0, and subsequent outputs are the cumulative sum of inputs up to that point.
     integrate : [o : Additive] Machine o o;
     integrate = from_transition(zero, |i, sum| (sum + i, sum));
 }
