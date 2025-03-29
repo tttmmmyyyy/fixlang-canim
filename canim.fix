@@ -20,20 +20,12 @@ clock = Machine::integrate;
 type Draw = Cairo -> IO ();
 
 namespace Draw {
-    // 描画命令終了後にcairoのtransformをリセットするようにする
-    restore_transform : Draw -> Draw;
-    restore_transform = |draw, cairo| (
-        let org_matrix = *cairo.get_matrix;
-        draw(cairo);;
-        cairo.set_matrix(org_matrix);;
-        pure()
-    );
-
     // 描画位置を平行移動する
     translate : Vec2 -> Draw -> Draw;
     translate = |vec, draw, cairo| (
         let org_matrix = *cairo.get_matrix;
         cairo.translate(vec.to_tuple);;
+        // TODO: use cairo.save and cairo.restore
         draw(cairo);;
         cairo.set_matrix(org_matrix);;
         pure()
@@ -48,11 +40,9 @@ namespace Animation {
     //
     // 第一引数はバッファリングする矩形
     buffered : Rectangle -> Animation -> Animation;
-    buffered = |rect, ani| Machine::from_transition_io(none(), |dt, opt_buffer|
-        // 描画命令を取得する
-        let (ani, draw) = *ani.Machine::run(dt);
-
+    buffered = |rect, ani| Machine::from_transition_io((ani, none()), |dt, (ani, opt_buffer)|
         // バッファとそれに描画を行うためのコンテキストを取得する
+        // TODO: このままだと変換行列がスケールされている時にバッファの解像度が落ちたり過度に高くなったりするので対処する。cairo_user_to_deviceとかを使うとできるはず。
         let (surface, cairo, draw_buf) = *match opt_buffer {
             none() => ( // 未生成のとき
                 // バッファとそれに描画を行うためのコンテキストを作成する
@@ -61,8 +51,8 @@ namespace Animation {
 
                 // さらに、そのバッファを描画するという内容の描画処理を作成する
                 let draw_buf = |cairo| (
-                    cairo.set_source_surface(surface, (0.0, 0.0));;
-                    cairo.rectangle((0.0, 0.0), rect.@size.to_tuple.map01(to_F64));;
+                    cairo.set_source_surface(surface, rect.@pos.to_tuple);;
+                    cairo.rectangle(rect.@pos.to_tuple, rect.@size.to_tuple);;
                     cairo.fill
                 );
                 pure $ (surface, cairo, draw_buf)
@@ -70,10 +60,11 @@ namespace Animation {
             some(buffer_data) => pure $ buffer_data
         };
 
-        // バッファに描画を行う
-        (draw.translate(rect.@pos))(cairo);;
+        // 描画命令を取得し、バッファに描画を行う
+        let (ani, draw) = *ani.run(dt);
+        (draw.translate(-rect.@pos))(cairo);;
 
-        pure $ (some $ (surface, cairo, draw_buf), draw_buf)
+        pure $ ((ani, some $ (surface, cairo, draw_buf)), draw_buf)
     );
 }
 
@@ -85,10 +76,10 @@ type Config = box struct {
     fps : F64,
 };
 
-namespace Frame {
+namespace Animation {
     // ウィンドウを作成し、アニメーションを実行する
-    run : Config -> Animation -> IO ();
-    run = |config, ani| (
+    run_ani : Config -> Animation -> IO ();
+    run_ani = |config, ani| (
         // ウィンドウとCairoコンテキストの作成
         let window = *XlibSurface::create_simple_window(config.@window_size);
         let event_mask = EventMask::key_press;
@@ -129,7 +120,7 @@ namespace Frame {
             if exit { break_m $ () };
 
             // アニメーションを進める
-            let (ani, draw) = *ani.Machine::run(time_delta);
+            let (ani, draw) = *ani.run(time_delta);
 
             // フレームを描画する
             // 画面の中心を描画命令の原点にする
