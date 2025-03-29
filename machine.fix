@@ -58,6 +58,30 @@ namespace Machine {
     // The first output is 0, and subsequent outputs are the cumulative sum of inputs up to that point.
     integrate : [o : Additive] Machine o o;
     integrate = from_transition(zero, |i, sum| (sum + i, sum));
+
+    // Compose two machines.
+    compose : Machine o1 o2 -> Machine i o1 -> Machine i o2;
+    compose = |m2, m1| (
+        Machine {
+            _run : |i| (
+                let (m1, o1) = *m1.run(i);
+                let (m2, o2) = *m2.run(o1);
+                pure $ (m1.compose(m2), o2)
+            )
+        }
+    );
+
+    // Zip two machines.
+    zip : Machine i o2 -> Machine i o1 -> Machine i (o1, o2);
+    zip = |m2, m1| (
+        Machine {
+            _run : |i| (
+                let (m1, o1) = *m1.run(i);
+                let (m2, o2) = *m2.run(i);
+                pure $ (m1.zip(m2), (o1, o2))
+            )
+        }
+    );
 }
 
 test_machine : [o : Eq, o : ToString] Machine i o -> Array (i, o) -> IO ();
