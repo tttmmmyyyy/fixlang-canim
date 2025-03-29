@@ -1,12 +1,12 @@
 /*
-原点を中心とする円の上を移動する点のアニメーション
+Animation of a point moving on a circle centered at the origin
 
-時刻tから描画内容が計算できる単純な場合のサンプル
+A simple example where the drawing content can be calculated from the time t.
 */
 module Main;
 
-import Canim;
-import Canim.Machine;
+import Funim;
+import Funim.Machine;
 
 import Cairo;
 import Math;
@@ -17,26 +17,26 @@ import MiscAlgos.Functional;
 c_fps : F64;
 c_fps = 60.0;
 
-// 画面サイズ
+// Screen size
 c_image_size : (I64, I64);
 c_image_size = (800, 600);
 
-// 円の半径
+// Radius of the circle
 c_radius : F64;
 c_radius = 100.0;
 
 main : IO ();
 main = (
-    let config = Canim::Config {
+    let config = Funim::Config {
         fps : c_fps,
-        window_size : c_image_size,
+        size : c_image_size,
     };
-    let pos = Canim::clock.map(|t|
+    let pos = Funim::clock.map(|t|
         let v = Vec2::make(c_radius, 0.0);
         v.rotated(t * 2.0 * pi64 / 3.0)
     );
     let ani = pos.map(|pos, cairo|
-        // cairoコンテキストの原点は画面の中心に設定されている
+        // The origin of the cairo context is set to the center of the screen
         cairo.set_source_rgb((1.0, 1.0, 1.0));;
         cairo.arc(pos.to_tuple, 10.0, 0.0, 2.0 * pi64);;
         cairo.fill;;
@@ -50,5 +50,5 @@ main = (
     );
     let ani = ani.buffered(buffer_rect);
 
-    ani.run_ani(config)
+    Funim::run_animation(ani, config)
 );

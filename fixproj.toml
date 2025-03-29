@@ -1,15 +1,15 @@
 [general]
 ## Project name. This is a required field.
-name = "canim"
+name = "funim"
 
 ## Project version (in semver). This is a required field.
-version = "0.4.0"
+version = "0.5.0"
 
 ## Project authors.
 # authors = ["Alice", "Bob"]
 
 ## Project description.
-description = "Cairo Animation library"
+description = "Functional animation library."
 
 ## Project license.
 # license = "MIT"
@@ -17,7 +17,7 @@ description = "Cairo Animation library"
 [build]
 ## Fix source files to be compiled.
 ## Merged with files specified in the command line argument.
-files = ["canim.fix", "machine.fix"]
+files = ["funim.fix", "machine.fix"]
 
 ## Object files to be linked.
 ## Merged with object files specified in the command line argument.

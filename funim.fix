@@ -1,0 +1,149 @@
+/*
+A functional animation library.
+*/
+module Funim;
+
+import Cairo;
+import Cairo.XlibSurface;
+import Cairo.ImageSurface;
+import Time hiding {Time};
+import MiscAlgos.Geometry;
+import MiscAlgos.Functional;
+
+import Funim.Machine;
+
+type TimeDelta = F64;
+type Time = F64;
+
+// The machine that outputs the current time.
+clock : Machine TimeDelta Time;
+clock = Machine::integrate;
+
+// Type for drawing operations.
+type Draw = Cairo -> IO ();
+
+namespace Draw {
+    // Translate the drawing position.
+    translate : Vec2 -> Draw -> Draw;
+    translate = |vec, draw, cairo| (
+        cairo.save;;
+        cairo.translate(vec.to_tuple);;
+        draw(cairo);;
+        cairo.restore;;
+        pure()
+    );
+}
+
+// Type representing an animation.
+// 
+// An animation is a machine that takes the elapsed time since the last frame as input and outputs the drawing process at the current time.
+// 
+// Note: The origin of the coordinate system for the drawing is the center of the screen (not the top left).
+type Animation = Machine TimeDelta Draw;
+
+namespace Animation {
+    // Draw the animation through a dedicated buffer.
+    //
+    // The first argument is a rectangle that specifies the range to buffer.
+    buffered : Rectangle -> Animation -> Animation;
+    buffered = |rect, ani| Machine::from_transition_io((ani, none()), |dt, (ani, opt_buffer)|
+        // Obtain the buffer and the context for drawing to it
+        // TODO: Currently, when the transformation matrix is scaled, the buffer resolution may drop or become excessively high. This should be addressed. Using cairo_user_to_device might help.
+        let (surface, cairo, draw_buf) = *match opt_buffer {
+            none() => ( // When not yet created
+                // Create the buffer and the context for drawing to it
+                let surface = *ImageSurface::create(Format::argb, rect.@size.to_tuple.map01(to_I32));
+                let cairo = *Cairo::create(surface);
+
+                // Additionally, create a drawing operation that draws this buffer
+                let draw_buf = |cairo| (
+                    cairo.set_source_surface(surface, rect.@pos.to_tuple);;
+                    cairo.rectangle(rect.@pos.to_tuple, rect.@size.to_tuple);;
+                    cairo.fill
+                );
+                pure $ (surface, cairo, draw_buf)
+            ),
+            some(buffer_data) => pure $ buffer_data
+        };
+
+        // Obtain the drawing command and draw to the buffer
+        let (ani, draw) = *ani.run(dt);
+        (draw.translate(-rect.@pos))(cairo);;
+
+        pure $ ((ani, some $ (surface, cairo, draw_buf)), draw_buf)
+    );
+
+    // Translate the position of the animation
+    translate : Vec2 -> Animation -> Animation;
+    translate = |vec, ani| ani.map(|draw| draw.translate(vec));
+}
+
+// Animation configuration
+type Config = box struct {
+    // Screen size
+    size : (I64, I64),
+    // Desired frame rate
+    fps : F64,
+};
+
+// Create a window and run the animation
+run_animation : Animation -> Config -> IO ();
+run_animation = |ani, config| (
+    // Create the window and Cairo context
+    let window = *XlibSurface::create_simple_window(config.@size);
+    let event_mask = EventMask::key_press;
+    window.select_input(event_mask);;
+    let surface = *XlibSurface::create_back_surface(window);
+    let cairo = *Cairo::create(surface);
+
+    // Main loop
+    let start_time = (*Time::get_now_monotonic).to_F64;
+    loop_m((start_time, ani), |(prev_time, ani)|
+        // Skip processing if the elapsed time since the last frame is within one frame
+        let time = (*Time::get_now_monotonic).to_F64;
+        let time_delta = time - prev_time;
+        if time_delta < 1.0 / config.@fps { continue_m $ (prev_time, ani) };
+
+        // Display the FPS
+        println("FPS: " + (1.0 / time_delta).to_string);;
+
+        // Process to update the state based on X events
+        // Current behavior: Exit when the Q key is pressed
+        let exit = *loop_m((), |_| (
+            if *window.events_queued(QueuedMode::already) == 0 { break_m $ false };
+            let event = *window.next_event;
+
+            let exit = *(
+                if !event.is_key_press { pure $ false };
+                let keycode = event.as_key_press.@keycode;
+                let keysym = *window.keycode_to_keysym(keycode);
+                let keysym_q = string_to_keysym("q");
+                pure $ keysym == keysym_q
+            );
+            if exit { break_m $ true };
+
+            continue_m $ ()
+        ));
+
+        // Exit the main loop if the Q key was pressed
+        if exit { break_m $ () };
+
+        // Advance the animation
+        let (ani, draw) = *ani.run(time_delta);
+
+        // Draw the frame
+        // Set the center of the screen as the origin of the drawing commands
+        let window_center = Vec2::make_from_tuple $ config.@size.map01(|x| x.to_F64 * 0.5);
+        (draw.translate(window_center))(cairo);;
+
+        // Display the drawing results on the screen
+        window.flush;;
+        window.swap_buffers(XbeSwapAction::background);;
+
+        continue_m $ (time, ani)
+    );;
+
+    window.destroy_window;;
+
+    pure()
+);

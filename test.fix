@@ -1,6 +1,6 @@
 module Test;
 
-import Canim.Machine;
+import Funim.Machine;
 
 test : IO ();
 test = (

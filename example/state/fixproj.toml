@@ -97,7 +97,7 @@ version = "0.2.1"
 git = { url = "https://github.com/tttmmmyyyy/fixlang-cairo.git" }
 
 [[dependencies]]
-name = "canim"
+name = "funim"
 version = "*"
 path = "../../"
 

@@ -1,9 +1,9 @@
-// 状態機械ライブラリ
+// State machine library
 // 
 //
-module Canim.Machine;
+module Funim.Machine;
 
-// i型の入力を受け取るとo型の値を返す状態機械
+// A state machine that takes input of type i and returns output of type o
 type Machine i o = struct {
     _run : i -> IO (Machine i o, o),
 };
@@ -20,14 +20,14 @@ impl Machine i : Functor {
 }
 
 namespace Machine {
-    // 状態機械を1ステップ進める
+    // Advance the state machine by one step
     run : i -> Machine i o -> IO (Machine i o, o);
     run = |i, machine| (
         let (machine, o) = *(machine.@_run)(i);
         pure $ (machine, o)
     );
 
-    // 初期状態と状態遷移関数からオブジェクトを作成する
+    // Create an object from the initial state and state transition function
     from_transition : s -> (i -> s -> (s, o)) -> Machine i o;
     from_transition = |state, update| (
         Machine {
@@ -38,7 +38,7 @@ namespace Machine {
         }
     );
 
-    // 初期状態と状態遷移関数からオブジェクトを作成する
+    // Create an object from the initial state and state transition function with IO
     from_transition_io : s -> (i -> s -> IO (s, o)) -> Machine i o;
     from_transition_io = |state, update| (
         Machine {
@@ -49,13 +49,13 @@ namespace Machine {
         }
     );
 
-    // 入力されたものをそのまま出力する状態機械を作成する
+    // Create a state machine that outputs the input as is
     identity : Machine i i;
     identity = from_transition((), |i, _| ((), i));
 
-    // 入力の累積和を計算する状態機械を作成する
+    // Create a state machine that calculates the cumulative sum of inputs
     // 
-    // 最初の出力は0で、以降は直前までの入力の累積和を出力する
+    // The first output is 0, and subsequent outputs are the cumulative sum of inputs up to that point
     integrate : [o : Additive] Machine o o;
     integrate = from_transition(zero, |i, sum| (sum + i, sum));
 }

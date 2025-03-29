@@ -1,4 +1,4 @@
-proj_file_hash = "448def96094ff4b4871d462550d5d0bb"
+proj_file_hash = "fdc3b50a0a1812a7c8f36888acc4e296"
 
 [[dependencies]]
 name = "cairo-fix"
@@ -19,8 +19,8 @@ repo = "https://github.com/tttmmmyyyy/fixlang-math.git"
 rev = "bac9ade9118530115eda0a302ade1bb0d6bd928b"
 
 [[dependencies]]
-name = "canim"
-version = "0.4.0"
+name = "funim"
+version = "0.5.0"
 path = "../../"
 
 [[dependencies]]

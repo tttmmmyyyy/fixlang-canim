@@ -1,12 +1,14 @@
 /*
-3体問題のアニメーション
+Animation of the three-body problem
 
-直前の状態から次の状態が決まるアニメーションのサンプル
+A sample animation which are defined by: 
+- the state transition function which determines the state at time t + dt by the state at time t, and
+- the rendering function which draws the state.
 */
 module Main;
 
-import Canim;
-import Canim.Machine;
+import Funim;
+import Funim.Machine;
 import Cairo;
 import Math;
 import MiscAlgos.Geometry;
@@ -15,26 +17,26 @@ import MiscAlgos.Geometry;
 c_fps : F64;
 c_fps = 60.0;
 
-// 画面サイズ
+// Screen size
 c_image_size : (I64, I64);
 c_image_size = (800, 600);
 
-// 重力定数
+// Gravitational constant
 gravity : F64;
 gravity = 20.0;
 
-// 天体の状態
+// State of a celestial body
 type Body = struct {
     pos : Vec2,
     vel : Vec2,
     mass : F64,
 };
 
-// アニメーションの状態
+// Animation state
 type State = Array Body;
 
 namespace State {
-    // 初期状態
+    // Initial state
     initial : State;
     initial = [
         Body {
@@ -54,15 +56,15 @@ namespace State {
         },
     ];
 
-    // 状態を更新する
+    // Update the state
     update : TimeDelta -> State -> State;
     update = |dt, state| (
         range(0, 3).fold([], |i, new_state|
-            // 天体のリストを、位置を更新するべき天体と、その他に分ける
+            // Split the list of celestial bodies into the body to update and the others
             let this = state.@(i);
             let others = range(0, 3).filter(|j| j != i).map(|j| state.@(j));
             
-            // thisが受ける力を計算
+            // Calculate the force acting on 'this'
             let force = others.fold(Vec2::make(0.0, 0.0), |other, force|
                 let r = other.@pos - this.@pos;
                 let d = r.@length;
@@ -70,12 +72,12 @@ namespace State {
                 force + f
             );
 
-            // thisの加速度、速度、位置を更新
+            // Update the acceleration, velocity, and position of 'this'
             let acc = force;
             let vel = this.@vel + acc.scaled(dt);
             let pos = this.@pos + vel.scaled(dt);
 
-            // 新しい状態を追加
+            // Add the new state
             new_state.push_back(Body {
                 pos : pos,
                 vel : vel,
@@ -84,7 +86,7 @@ namespace State {
         )
     );
 
-    // 状態を描画する
+    // Render the state
     render : State -> Cairo -> IO ();
     render = |state, cairo| (
         cairo.set_source_rgb((1.0, 1.0, 1.0));;
@@ -98,14 +100,15 @@ namespace State {
 
 main : IO ();
 main = (
-    let config = Canim::Config {
+    let config = Funim::Config {
         fps : c_fps,
-        window_size : c_image_size,
+        size : c_image_size,
     };
     let state = Machine::from_transition(
         State::initial,
         |dt, s| let s = s.update(dt); (s, s)
     );
     let ani = state.map(State::render);
-    ani.run(config)
+
+    Funim::run_animation(ani, config)
 );
