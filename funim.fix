@@ -45,6 +45,8 @@ namespace Animation {
     // Draw the animation through a dedicated buffer.
     //
     // The first argument is a rectangle that specifies the range to buffer.
+    // 
+    // The buffer is not cleared automatically.
     buffered : Rectangle -> Animation -> Animation;
     buffered = |rect, ani| Machine::from_transition_io((ani, none()), |dt, (ani, opt_buffer)|
         // Obtain the buffer and the context for drawing to it
