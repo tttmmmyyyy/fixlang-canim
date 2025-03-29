@@ -32,6 +32,16 @@ namespace Draw {
         cairo.restore;;
         pure()
     );
+
+    // Stack multiple drawing operations.
+    stack : Array Draw -> Draw;
+    stack = |draws, cairo| (
+        draws.to_iter.fold_m((), |draw, _|
+            cairo.save;;
+            draw(cairo);;
+            cairo.restore
+        )
+    );
 }
 
 // Type representing an animation.
@@ -78,6 +88,10 @@ namespace Animation {
     // Translate the position of the animation
     translate : Vec2 -> Animation -> Animation;
     translate = |vec, ani| ani.map(|draw| draw.translate(vec));
+
+    // Stack multiple animations.
+    stack : Array Animation -> Animation;
+    stack = |animations| Machine::parallel(animations).map(Draw::stack);
 }
 
 // Animation configuration

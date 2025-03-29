@@ -82,6 +82,19 @@ namespace Machine {
             )
         }
     );
+
+    parallel : Array (Machine i o) -> Machine i (Array o);
+    parallel = |machines| (
+        Machine {
+            _run : |i| (
+                let (machines, os) = *machines.to_iter.fold_m(([], []), |machine, (machines, os)| (
+                    let (machine, o) = *machine.run(i);
+                    pure $ (machines.push_back(machine), os.push_back(o))
+                ));
+                pure $ (parallel(machines), os)
+            )
+        }
+    );
 }
 
 test_machine : [o : Eq, o : ToString] Machine i o -> Array (i, o) -> IO ();
