@@ -28,25 +28,36 @@ namespace Machine {
     );
 
     // 初期状態と状態遷移関数からオブジェクトを作成する
-    from_transit : s -> (i -> s -> (s, o)) -> Machine i o;
-    from_transit = |state, update| (
+    from_transition : s -> (i -> s -> (s, o)) -> Machine i o;
+    from_transition = |state, update| (
         Machine {
             _run : |i| (
                 let (state, o) = update(i, state);
-                pure $ (from_transit(state, update), o)
+                pure $ (from_transition(state, update), o)
+            )
+        }
+    );
+
+    // 初期状態と状態遷移関数からオブジェクトを作成する
+    from_transition_io : s -> (i -> s -> IO (s, o)) -> Machine i o;
+    from_transition_io = |state, update| (
+        Machine {
+            _run : |i| (
+                let (state, o) = *update(i, state);
+                pure $ (from_transition_io(state, update), o)
             )
         }
     );
 
     // 入力されたものをそのまま出力する状態機械を作成する
     identity : Machine i i;
-    identity = from_transit((), |i, _| ((), i));
+    identity = from_transition((), |i, _| ((), i));
 
     // 入力の累積和を計算する状態機械を作成する
     // 
     // 最初の出力は0で、以降は直前までの入力の累積和を出力する
     integrate : [o : Additive] Machine o o;
-    integrate = from_transit(zero, |i, sum| (sum + i, sum));
+    integrate = from_transition(zero, |i, sum| (sum + i, sum));
 }
 
 test_machine : [o : Eq, o : ToString] Machine i o -> Array (i, o) -> IO ();

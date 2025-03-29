@@ -65,7 +65,7 @@ namespace State {
             // thisが受ける力を計算
             let force = others.fold(Vec2::make(0.0, 0.0), |other, force|
                 let r = other.@pos - this.@pos;
-                let d = r.get_length;
+                let d = r.@length;
                 let f = r.scaled(1.0 / (d * d * d)).scaled(this.@mass * other.@mass * gravity);
                 force + f
             );
@@ -102,7 +102,7 @@ main = (
         fps : c_fps,
         window_size : c_image_size,
     };
-    let state = Machine::from_transit(
+    let state = Machine::from_transition(
         State::initial,
         |dt, s| let s = s.update(dt); (s, s)
     );

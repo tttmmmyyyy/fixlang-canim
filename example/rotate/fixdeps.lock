@@ -1,4 +1,4 @@
-proj_file_hash = "ee4c5c6bf42974b3bd1d346ce780621a"
+proj_file_hash = "448def96094ff4b4871d462550d5d0bb"
 
 [[dependencies]]
 name = "cairo-fix"
@@ -34,12 +34,12 @@ rev = "53b35d9adc0de54ad87fe6b06c4baa6afa38a2b4"
 
 [[dependencies]]
 name = "misc-algos"
-version = "0.6.16"
-path = ".fixlang/deps/misc-algos_0.6.16"
+version = "0.7.1"
+path = ".fixlang/deps/misc-algos_0.7.1"
 
 [dependencies.git]
 repo = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git"
-rev = "d3a89a089dbf5232e7bb735889468914c40726fa"
+rev = "adf5880dd2b0eb41d5615361b0ab84b4f8934d4b"
 
 [[dependencies]]
 name = "binary-heap"

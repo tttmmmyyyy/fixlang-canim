@@ -11,6 +11,7 @@ import Canim.Machine;
 import Cairo;
 import Math;
 import MiscAlgos.Geometry;
+import MiscAlgos.Functional;
 
 // FPS
 c_fps : F64;
@@ -41,5 +42,13 @@ main = (
         cairo.fill;;
         pure()
     );
+    let size_vec = Vec2::make_from_tuple $ c_image_size.map01(to_F64);
+    
+    let buffer_rect = Rectangle::from_pos_size(
+        size_vec.scaled(-0.5),
+        size_vec
+    );
+    // let ani = ani.buffered(buffer_rect);
+
     ani.run(config)
 );
