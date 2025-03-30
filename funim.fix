@@ -100,15 +100,44 @@ type Config = box struct {
     size : (I64, I64),
     // Desired frame rate
     fps : F64,
+    // Enable encoding.
+    // 
+    // Save the drawing result of each frame to the specified directory.
+    encode : Option Std::Path,
+    // Show information to the console
+    verbose : Bool,
+    // Length of the animation
+    length : Option Time,
 };
 
 namespace Config {
     // Create a default configuration.
     // 
-    // The desired fps is set to 30.0.
+    // - The desired fps is set to 30.0.
     default : (I64, I64) -> Config;
     default = |size| (
-        Config {size : size, fps : 30.0}
+        Config {
+            size : size,
+            fps : 30.0,
+            encode : none(),
+            verbose : true,
+            length : none(),
+        }
+    );
+
+    // Create a configuration for encoding.
+    //
+    // - The desired fps is set to 30.0.
+    // - The fixed_fps is set to true.
+    encode : (I64, I64) -> Time -> Std::Path -> Config;
+    encode = |size, length, encode_dir| (
+        Config {
+            size : size,
+            fps : 30.0,
+            encode : some $ encode_dir,
+            verbose : true,
+            length : some(length),
+        }
     );
 }
 
@@ -122,16 +151,26 @@ run_animation = |ani, config| (
     let surface = *XlibSurface::create_back_surface(window);
     let cairo = *Cairo::create(surface);
 
+    let encode_mode = config.@encode.is_some;
+
     // Main loop
     let start_time = (*Time::get_now_monotonic).to_F64;
-    loop_m((start_time, ani), |(prev_time, ani)|
+    loop_m((start_time, 0, ani), |(prev_time, frame, ani)|
         // Skip processing if the elapsed time since the last frame is within one frame
-        let time = (*Time::get_now_monotonic).to_F64;
-        let time_delta = time - prev_time;
-        if time_delta < 1.0 / config.@fps { continue_m $ (prev_time, ani) };
+        let now_time = (*Time::get_now_monotonic).to_F64;
+        let (time_delta, elapsed_time) = if encode_mode { 
+            (1.0 / config.@fps, frame.to_F64 / config.@fps)
+        } else {
+            (now_time - prev_time, now_time - start_time)
+        };
+        if time_delta < 1.0 / config.@fps { continue_m $ (prev_time, frame, ani) };
+        if config.@length.is_some && elapsed_time > config.@length.as_some { break_m $ () };
 
-        // Display the FPS
-        println("FPS: " + (1.0 / time_delta).to_string);;
+        // Display the infomation to the console
+        when(config.@verbose, 
+            // Show frame no, time, and fps
+            println("Frame: " + frame.to_string + ", Time: " + elapsed_time.to_string + "s, FPS: " + (1.0 / time_delta).to_string)
+        );;
 
         // Process to update the state based on X events
         // Current behavior: Exit when the Q key is pressed
@@ -162,11 +201,20 @@ run_animation = |ani, config| (
         let window_center = Vec2::make_from_tuple $ config.@size.map01(|x| x.to_F64 * 0.5);
         (draw.translate(window_center))(cairo);;
 
-        // Display the drawing results on the screen
+        match config.@encode {
+            // Save the drawing result to the specified directory
+            some(encode_dir) => (
+                let file_name = encode_dir + "/" + frame.to_string + ".png";
+                surface.write_to_png(file_name)
+            ),
+            none() => pure()
+        };;
+
+        // Display the drawing results on the screen.
         window.flush;;
         window.swap_buffers(XbeSwapAction::background);;
 
-        continue_m $ (time, ani)
+        continue_m $ (now_time, frame + 1, ani)
     );;
 
     window.destroy_window;;
