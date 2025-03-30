@@ -102,6 +102,16 @@ type Config = box struct {
     fps : F64,
 };
 
+namespace Config {
+    // Create a default configuration.
+    // 
+    // The desired fps is set to 30.0.
+    default : (I64, I64) -> Config;
+    default = |size| (
+        Config {size : size, fps : 30.0}
+    );
+}
+
 // Create a window and run the animation
 run_animation : Animation -> Config -> IO ();
 run_animation = |ani, config| (

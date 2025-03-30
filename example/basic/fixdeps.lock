@@ -20,7 +20,7 @@ rev = "bac9ade9118530115eda0a302ade1bb0d6bd928b"
 
 [[dependencies]]
 name = "funim"
-version = "0.5.0"
+version = "0.4.3"
 path = "../../"
 
 [[dependencies]]
@@ -34,12 +34,12 @@ rev = "53b35d9adc0de54ad87fe6b06c4baa6afa38a2b4"
 
 [[dependencies]]
 name = "misc-algos"
-version = "0.7.1"
-path = ".fixlang/deps/misc-algos_0.7.1"
+version = "0.7.2"
+path = ".fixlang/deps/misc-algos_0.7.2"
 
 [dependencies.git]
 repo = "https://github.com/tttmmmyyyy/fixlang-misc-algos.git"
-rev = "adf5880dd2b0eb41d5615361b0ab84b4f8934d4b"
+rev = "dcf17638692baa15cfe3765d55750c5f92e68086"
 
 [[dependencies]]
 name = "binary-heap"

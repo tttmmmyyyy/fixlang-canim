@@ -13,10 +13,6 @@ import Cairo;
 import Math;
 import MiscAlgos.Geometry;
 
-// FPS
-c_fps : F64;
-c_fps = 60.0;
-
 // Screen size
 c_image_size : (I64, I64);
 c_image_size = (800, 600);
@@ -100,10 +96,7 @@ namespace State {
 
 main : IO ();
 main = (
-    let config = Funim::Config {
-        fps : c_fps,
-        size : c_image_size,
-    };
+    let config = Funim::Config::default(c_image_size);
     let state = Machine::from_transition(
         State::initial,
         |dt, s| let s = s.update(dt); (s, s)

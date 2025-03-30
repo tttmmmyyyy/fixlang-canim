@@ -27,10 +27,7 @@ c_radius = 100.0;
 
 main : IO ();
 main = (
-    let config = Funim::Config {
-        fps : c_fps,
-        size : c_image_size,
-    };
+    let config = Funim::Config::default(c_image_size);
     let pos = Funim::clock.map(|t|
         let v = Vec2::make(c_radius, 0.0);
         v.rotated(t * 2.0 * pi64 / 3.0)
@@ -43,12 +40,6 @@ main = (
         pure()
     );
     let size_vec = Vec2::make_from_tuple $ c_image_size.map01(to_F64);
-
-    let buffer_rect = Rectangle::from_pos_size(
-        size_vec.scaled(-0.5),
-        size_vec
-    );
-    let ani = ani.buffered(buffer_rect);
 
     Funim::run_animation(ani, config)
 );
