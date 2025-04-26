@@ -114,6 +114,10 @@ namespace Config {
     // Create a default configuration.
     // 
     // - The desired fps is set to 30.0.
+    //
+    // # Parameters
+    //
+    // * `size`
     default : (I64, I64) -> Config;
     default = |size| (
         Config {
@@ -129,6 +133,12 @@ namespace Config {
     //
     // - The desired fps is set to 30.0.
     // - The fixed_fps is set to true.
+    // 
+    // # Parameters
+    //
+    // * `size`
+    // * `time`
+    // * `out_path`
     encode : (I64, I64) -> Time -> Std::Path -> Config;
     encode = |size, length, encode_dir| (
         Config {
@@ -142,6 +152,11 @@ namespace Config {
 }
 
 // Create a window and run the animation
+// 
+// # Parameters
+// 
+// * `animation`
+// * `config`
 run_animation : Animation -> Config -> IO ();
 run_animation = |ani, config| (
     // Create the window and Cairo context
